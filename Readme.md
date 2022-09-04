@@ -1,0 +1,6 @@
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=MateuszHub_scala&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=MateuszHub_scala)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=MateuszHub_scala&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=MateuszHub_scala)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=MateuszHub_scala&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=MateuszHub_scala)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=MateuszHub_scala&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=MateuszHub_scala)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=MateuszHub_scala&metric=bugs)](https://sonarcloud.io/summary/new_code?id=MateuszHub_scala)
+[![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-white.svg)](https://sonarcloud.io/summary/new_code?id=MateuszHub_scala)
