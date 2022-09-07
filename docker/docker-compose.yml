@@ -1,0 +1,44 @@
+version: "3.7"
+
+services:
+#     frontend:
+#         build: ../frontend
+#         ports:
+#             - 3000:3000
+#         expose:
+#             - 3000
+#         networks: 
+#             - shared
+#         environment:
+#             - REACT_APP_BACKEND_HOST=https://localhost:9443
+
+    # backend:
+    #     build: ../backend
+    #     ports:
+    #         - 9443:9443
+    #     expose:
+    #         - 9443
+    #     networks: 
+    #         - shared
+    #     environment:
+    #         - BACKEND_HOST="123"
+    #         - GOOGLE_ID="123"
+    #         - GOOGLE_KEY="123"
+    #         - STRIPE_KEY="123"
+    #         - STRIPE_SECRET="123"
+
+    mysql:
+        build: ../database
+        ports:
+            - 3306:3306
+        expose:
+            - 3306
+        command: ['--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+        restart: always
+        environment: 
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: gamestore
+        networks: 
+            - shared
+networks:
+  shared: {}

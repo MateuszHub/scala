@@ -13,6 +13,8 @@ import CartContextProvider from './context/CartContextProvider';
 import AuthPage from './page/AuthPage';
 import AccountPage from './page/AccountPage';
 import OrdersPage from './page/OrdersPage';
+import AddKeysPage from './page/AddKeysPage';
+import AddItem from './page/AddItem';
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
             <Route path='/auth' element={<AuthPage />} />
             <Route path='/orders' element={<OrdersPage />} />
             <Route path='/account' element={<AccountPage />} />
+            <Route path='/items/:id/keys' element={<AddKeysPage />} />
+            <Route path='/items/add' element={<AddItem />} />
           </Routes>
         </Container>
       </BrowserRouter>

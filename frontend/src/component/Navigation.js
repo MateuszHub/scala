@@ -6,7 +6,7 @@ const Navigation = (props) => {
     const isUserLogged = () => {
         return user?.name?.length > 0;
     }
-    const [user, logout] = useAuth()
+    const [user, _, logout] = useAuth()
 
     return (<Navbar bg="light" expand="lg">
         <Container>
@@ -18,6 +18,7 @@ const Navigation = (props) => {
                     {!isUserLogged() && <Nav.Link href="/auth">Login/Register</Nav.Link>}
                     {isUserLogged() && <Nav.Link href="/orders">Orders</Nav.Link>}
                     {isUserLogged() && <Nav.Link href="/account">Account</Nav.Link>}
+                    {isUserLogged() && user.isAdmin && <Nav.Link href="/items/add">Add item</Nav.Link>}
                     {isUserLogged() &&<button className='btn' onClick={(e) => {logout()}}>Logout</button>}
                 </Nav>
             </Navbar.Collapse>

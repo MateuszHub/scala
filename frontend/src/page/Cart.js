@@ -4,6 +4,7 @@ import AddressForm from "../component/AddressForm";
 import Payment from "../component/Payment";
 import CartList from "../component/CartList";
 import axios from "axios";
+import CONSTANTS from "../utils/Constants";
 
 function Cart() {
 
@@ -19,7 +20,7 @@ function Cart() {
     });
 
     useEffect(() => {
-        axios.get(`https://localhost:9443/address`,  { withCredentials: true })
+        axios.get(`${CONSTANTS.BACKEND_HOST}/address`,  { withCredentials: true })
             .then(function (response) {
                 if(response?.data?.length > 0)
                     setAddress(response.data[0]);

@@ -1,4 +1,5 @@
 import { useContext } from "react";
+import { Button, Card, ListGroup } from "react-bootstrap";
 import { CartContext } from "../context/CartContextProvider";
 
 function ItemCartComponent({item}) {
@@ -6,13 +7,14 @@ function ItemCartComponent({item}) {
     const cart = useContext(CartContext);
 
     return (
-        <li>
-            <ul>
-                <li>{item.name}</li>
-                <li>{item.price}</li>
-                <li>{item.quantity}</li>
-            </ul>
-            <button onClick={() => cart.removeProductFromCart(item)}>Remove</button>
+        <li className="mt-3">
+            <Card style={{ width: '18rem' }}>
+                <Card.Header>{item.name}</Card.Header>
+                <ListGroup variant="flush">
+                <ListGroup.Item>{(item.price / 100)}zł</ListGroup.Item>
+                <ListGroup.Item><Button variant="danger" onClick={() => cart.removeProductFromCart(item)}>Remove</Button></ListGroup.Item>
+                </ListGroup>
+            </Card>
         </li>
     )
 }

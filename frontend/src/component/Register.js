@@ -1,15 +1,12 @@
 import axios from "axios";
 import { useState } from "react";
+import CONSTANTS from "../utils/Constants";
 
 const Register = () => {
     const [password, setPassword] = useState("");
     const [email, setEmail] = useState("");
-    const loginSubmit = (e) => {
-        e.preventDefault();
-        axios.post(`http://localhost:8080/reg`, {email: email, password: password})
-    }
     return (
-        <form id="regform" onSubmit={loginSubmit}>
+        <form id="regform" method="POST" action={`${CONSTANTS.BACKEND_HOST}/register`}>
             <div className="form-group mt-5">
                 <label>Email address</label>
                 <input

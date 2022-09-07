@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import CONSTANTS from "../utils/Constants";
 
 const useAuth = () => {
     const [user, setUser] = useState({
@@ -9,7 +10,7 @@ const useAuth = () => {
         reloadUser();
     }, [])
     const reloadUser = () => {
-        axios.get(`https://localhost:9443/users`,  { withCredentials: true })
+        axios.get(`${CONSTANTS.BACKEND_HOST}/users`,  { withCredentials: true })
             .then(function (response) {
                 setUser(response.data[0]);
             }).catch(function (error) {
@@ -18,7 +19,8 @@ const useAuth = () => {
             });
     }
     const logout = () => {
-        axios.get(`https://localhost:9443/logout`,  { withCredentials: true })
+        console.log("logged out")
+        axios.get(`${CONSTANTS.BACKEND_HOST}/logout`,  { withCredentials: true })
             .then(function (response) {
                 setUser({name: ""});
             }).catch(function (error) {

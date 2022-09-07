@@ -3,6 +3,7 @@ package controllers
 import at.favre.lib.crypto.bcrypt.BCrypt
 import play.api.libs.json._
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
+import play.filters.csrf.CSRF
 import repositories.Tables.{Logins, LoginsRow}
 import services.AuthService
 import slick.jdbc.JdbcBackend.Database
@@ -23,7 +24,7 @@ class BasicAuthController @Inject()(val controllerComponents: ControllerComponen
   val db = Database.forConfig("mydb")
 
   def login(): Action[AnyContent] = Action.async {
-    request => {
+    implicit request => {
       val content = request.body
       val auth = new AuthService
       val data = content.asFormUrlEncoded
@@ -31,16 +32,15 @@ class BasicAuthController @Inject()(val controllerComponents: ControllerComponen
       val p = data.get("password").head
       val bc = BCrypt.verifyer();
       val res = db.run(logins.filter(_.email === email).result)
-
       res.flatMap { login =>
         if (login.nonEmpty) {
           if (bc.verify(p.toCharArray, login.head.password.get.toCharArray).verified) {
             auth.getId(email).map(result => {
               val id = result
               if (id.isEmpty) {
-                (Ok("Something went wrong").withNewSession)
+                (Unauthorized("Something went wrong").withNewSession)
               } else {
-                (Ok(email))
+                (Ok(email).addingToSession("email" -> email, "id" -> id.get.toString))
               }
             })
           } else {
@@ -57,9 +57,9 @@ class BasicAuthController @Inject()(val controllerComponents: ControllerComponen
     request => {
       val content = request.body
       val auth = new AuthService
-      val data = content.asFormUrlEncoded
-      val email = data.get("email").head
-      val p = data.get("password").head
+      val data = content.asJson
+      val email = Json.fromJson[String](data.get("email")).get
+      val p = Json.fromJson[String](data.get("password")).get
       val bc = BCrypt.withDefaults();
       val res = db.run(logins.filter(_.email === email).result)
 

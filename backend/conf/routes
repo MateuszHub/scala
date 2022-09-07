@@ -33,6 +33,11 @@ GET     /orders/:id/pay                 controllers.OrderController.pay(id: Int)
 +nocsrf
 POST     /         controllers.OrderController.afterPay
 
+# keys
+GET /orders/:orderId/keys                controllers.KeysController.get(orderId: Int)
++nocsrf
+POST /items/:_itemId/keys               controllers.KeysController.add(_itemId: Int)
+
 # address
 GET     /address                     controllers.AddressController.getAll
 +nocsrf

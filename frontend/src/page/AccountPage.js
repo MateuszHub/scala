@@ -17,7 +17,7 @@ function AccountPage() {
     });
     const [user] = useAuth();
     const loadAddress = () => {
-        axios.get(`https://localhost:9443/address`,  { withCredentials: true })
+        axios.get(`${process.env.REACT_APP_BACKEND_HOST}/address`,  { withCredentials: true })
             .then(function (response) {
                 console.log(response.data)
                 setAddress(response.data[0]);
@@ -25,6 +25,7 @@ function AccountPage() {
                 setAddress({});
             });
     }
+    
     useEffect(() => {
         loadAddress();
     }, [user])

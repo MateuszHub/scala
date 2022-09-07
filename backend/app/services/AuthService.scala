@@ -13,11 +13,24 @@ class AuthService {
   val users = TableQuery[Users]
   val db = Database.forConfig("mydb")
 
+  def isAdmin(id: Int): Future[Boolean] = {
+    return Future(true)
+    val q = users.filter(_.id === id)
+    val res = db.run(q.result)
+    res.map(item => {
+      if(item.nonEmpty) {
+        item.head.isAdmin.get
+      } else {
+        false
+      }
+    })
+  }
+
   def isRegistered(email: String): Future[Boolean] = {
     val q = users.filter(_.email === email)
     val res = db.run(q.result)
     res.map(item => {
-      item.isEmpty
+      item.nonEmpty
     })
   }
 

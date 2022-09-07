@@ -1,5 +1,7 @@
 package controllers
 
+import play.api.Configuration
+import play.api.libs.functional.syntax.toFunctionalBuilderOps
 import play.api.libs.json._
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import play.filters.csrf.CSRF
@@ -15,10 +17,11 @@ case class TokenResponse(accessToken: String, expiresIn: Int)
 case class UserInfoResp(name: String, id: String, email: String)
 
 class GoogleAuthController @Inject()(val controllerComponents: ControllerComponents)
+                                    (configuration: Configuration)
   extends BaseController {
 
-  val id = ""
-  val key = ""
+  val id = configuration.get[String]("google.appId")
+  val key = configuration.get[String]("google.appKey")
   val url = "https://accounts.google.com/o/oauth2/v2/auth"
   val tokenUrl = "https://oauth2.googleapis.com/token"
   val infoUrl = "https://www.googleapis.com/oauth2/v2/userinfo"
@@ -37,9 +40,11 @@ class GoogleAuthController @Inject()(val controllerComponents: ControllerCompone
 
   def setToken(code: String): Action[AnyContent] = Action.async {
     implicit req => {
-      implicit val tokenFormat: OFormat[TokenResponse] = Json.format[TokenResponse]
+      implicit val tokenFormat = (
+        (__ \ "access_token").read[String] and
+          (__ \ "expires_in").read[Int]
+        ) (TokenResponse)
       implicit val uirFromat: OFormat[UserInfoResp] = Json.format[UserInfoResp]
-      println(code)
       val request = basicRequest
         .body(Map("code" -> code,
           "client_id" -> id,
@@ -55,9 +60,10 @@ class GoogleAuthController @Inject()(val controllerComponents: ControllerCompone
       response.body match {
         case Right(r) => {
           val tokenResponse: TokenResponse = Json.parse(r).as[TokenResponse]
+          println(tokenResponse)
           val info = getInfo(tokenResponse.accessToken)
           val auth = new AuthService
-          auth.isRegistered(info.email).flatMap{
+          auth.isRegistered(info.email).flatMap {
             value => {
               println("Value is in db? = " + value)
               if (value) {
@@ -70,7 +76,7 @@ class GoogleAuthController @Inject()(val controllerComponents: ControllerCompone
                   }
                 })
               } else {
-                auth.register(info.email, info.name).flatMap {_=>
+                auth.register(info.email, info.name).flatMap { _ =>
                   auth.getId(info.email).flatMap(result => {
                     val id = result
                     if (id.isEmpty) {

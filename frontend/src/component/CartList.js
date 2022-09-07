@@ -5,7 +5,7 @@ import ItemCartComponent from "./ItemCartComponent";
 function CartList() {
     const cart = useContext(CartContext);
     return (
-        <ul>
+        <ul className="px-0" style={{listStyleType: "none"}}>
             {cart.items.map((item, index) =>
                 <ItemCartComponent key={index} item={item} />
             )}

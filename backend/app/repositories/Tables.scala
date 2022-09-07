@@ -121,6 +121,38 @@ object Tables extends {
   /** Collection-like TableQuery object for table ItemsOrders */
   lazy val ItemsOrders = new TableQuery(tag => new ItemsOrders(tag))
 
+  /** Entity class storing rows of table Keys
+   *
+   * @param id      Database column id SqlType(MEDIUMINT), AutoInc, PrimaryKey
+   * @param itemId  Database column item_id SqlType(MEDIUMINT), Default(None)
+   * @param orderId Database column order_id SqlType(MEDIUMINT), Default(None) */
+  case class KeysRow(id: Int, itemId: Option[Int] = None, orderId: Option[Int] = None, key: Option[String] = None)
+
+
+  /** Table description of table keys. Objects of this class serve as prototypes for rows in queries. */
+  class Keys(_tableTag: Tag) extends profile.api.Table[KeysRow](_tableTag, Some("gamestore"), "keys") {
+    def * = (id, itemId, orderId, key) <> (KeysRow.tupled, KeysRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = ((Rep.Some(id), itemId, orderId, key)).shaped.<>({ r => import r._; _1.map(_ => KeysRow.tupled((_1.get, _2, _3, _4))) }, (_: Any) => throw new Exception(NOT_SUPPORTED_TEXT))
+
+    /** Database column id SqlType(MEDIUMINT), AutoInc, PrimaryKey */
+    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column item_id SqlType(MEDIUMINT), Default(None) */
+    val itemId: Rep[Option[Int]] = column[Option[Int]]("item_id", O.Default(None))
+    /** Database column order_id SqlType(MEDIUMINT), Default(None) */
+    val orderId: Rep[Option[Int]] = column[Option[Int]]("order_id", O.Default(None))
+    /** Database column desc SqlType(TEXT), Default(None) */
+    val key: Rep[Option[String]] = column[Option[String]]("key", O.Default(None))
+
+    /** Foreign key referencing Items (database name items_orders_ibfk_1) */
+    lazy val itemsFk = foreignKey("items_orders_ibfk_1", itemId, Items)(r => Rep.Some(r.id), onUpdate = ForeignKeyAction.NoAction, onDelete = ForeignKeyAction.NoAction)
+    /** Foreign key referencing Orders (database name items_orders_ibfk_2) */
+    lazy val ordersFk = foreignKey("items_orders_ibfk_2", orderId, Orders)(r => Rep.Some(r.id), onUpdate = ForeignKeyAction.NoAction, onDelete = ForeignKeyAction.NoAction)
+  }
+
+  /** Collection-like TableQuery object for table Keys */
+  lazy val Keys = new TableQuery(tag => new Keys(tag))
   /** Entity class storing rows of table Logins
    *
    * @param id       Database column id SqlType(MEDIUMINT), AutoInc, PrimaryKey
@@ -195,14 +227,14 @@ object Tables extends {
    * @param email Database column email SqlType(VARCHAR), Length(255,true), Default(None)
    * @param name  Database column name SqlType(VARCHAR), Length(255,true), Default(None)
    * @param img   Database column img SqlType(VARCHAR), Length(255,true), Default(None) */
-  case class UsersRow(id: Int, email: Option[String] = None, name: Option[String] = None, img: Option[String] = None)
+  case class UsersRow(id: Int, email: Option[String] = None, name: Option[String] = None, img: Option[String] = None, isAdmin: Option[Boolean] = Some(false))
 
   /** Table description of table users. Objects of this class serve as prototypes for rows in queries. */
   class Users(_tableTag: Tag) extends profile.api.Table[UsersRow](_tableTag, Some("gamestore"), "users") {
-    def * = (id, email, name, img) <> (UsersRow.tupled, UsersRow.unapply)
+    def * = (id, email, name, img, isAdmin) <> (UsersRow.tupled, UsersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(id), email, name, img)).shaped.<>({ r => import r._; _1.map(_ => UsersRow.tupled((_1.get, _2, _3, _4))) }, (_: Any) => throw new Exception(NOT_SUPPORTED_TEXT))
+    def ? = ((Rep.Some(id), email, name, img, isAdmin)).shaped.<>({ r => import r._; _1.map(_ => UsersRow.tupled((_1.get, _2, _3, _4, _5))) }, (_: Any) => throw new Exception(NOT_SUPPORTED_TEXT))
 
     /** Database column id SqlType(MEDIUMINT), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
@@ -212,6 +244,8 @@ object Tables extends {
     val name: Rep[Option[String]] = column[Option[String]]("name", O.Length(255, varying = true), O.Default(None))
     /** Database column img SqlType(VARCHAR), Length(255,true), Default(None) */
     val img: Rep[Option[String]] = column[Option[String]]("img", O.Length(255, varying = true), O.Default(None))
+
+    val isAdmin: Rep[Option[Boolean]] = column[Option[Boolean]]("isAdmin", O.Default(Some(false)))
 
     /** Uniqueness Index over (email) (database name email) */
     val index1 = index("email", email, unique = true)

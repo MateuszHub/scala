@@ -3,7 +3,7 @@ function Item({item}) {
         <li>
             <ul>
                 <li>{item.name}</li>
-                <li>{item.price}</li>
+                <li>{(item.price / 100)}zł</li>
                 <li>{item.quantity}</li>
             </ul>
         </li>

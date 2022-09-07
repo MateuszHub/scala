@@ -21,7 +21,8 @@ class UserController @Inject()(val controllerComponents: ControllerComponents)
   val db = Database.forConfig("mydb")
 
   def get(): Action[AnyContent] = Action.async {
-    request => {
+    implicit request => {
+      println(request.session.data)
       val id = request.session.get("id").get.toInt
       val res = db.run(users.filter(_.id === id).result)
       res.map { items =>

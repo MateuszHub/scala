@@ -7,7 +7,7 @@ import com.stripe.param.checkout.SessionCreateParams.LineItem.PriceData
 import play.api.libs.json.Format.GenericFormat
 import play.api.libs.json._
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
-import repositories.Tables.{Items, ItemsOrders, ItemsOrdersRow, Orders, OrdersRow}
+import repositories.Tables.{Items, ItemsOrders, ItemsOrdersRow, ItemsRow, Keys, Orders, OrdersRow}
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.MySQLProfile.api._
 import slick.lifted.TableQuery
@@ -20,15 +20,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.language.postfixOps
 import com.stripe.param.checkout.SessionCreateParams
-
 import com.stripe.net.Webhook
+import play.api.Configuration
+
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.MapHasAsJava
 
 class OrderController @Inject()(val controllerComponents: ControllerComponents)
+                               (configuration: Configuration)
   extends BaseController {
 
   implicit val orderFormat: OFormat[OrdersRow] = Json.format[OrdersRow]
+  val keys = TableQuery[Keys]
   val orders = TableQuery[Orders]
   val items = TableQuery[Items]
   val itemsOrders = TableQuery[ItemsOrders]
@@ -38,10 +41,7 @@ class OrderController @Inject()(val controllerComponents: ControllerComponents)
     req => {
       val sigHeader = req.headers.get("Stripe-Signature").get
       val payload = req.body.asBytes().map(_.utf8String).getOrElse("")
-      println(sigHeader)
-      println(payload)
-
-      val event = Webhook.constructEvent(payload, sigHeader, "")
+      val event = Webhook.constructEvent(payload, sigHeader, configuration.get[String]("stripe.appSecret"))
       if (event.getType == "checkout.session.completed") {
         val sess = event.getDataObjectDeserializer().getObject().get().asInstanceOf[Session];
         if (sess.getPaymentStatus == "paid") {
@@ -68,42 +68,62 @@ class OrderController @Inject()(val controllerComponents: ControllerComponents)
   }
 
   def pay(id: Int) = Action.async {
-    Stripe.apiKey = ""
-    val domain = s"https://localhost:9443/orders/${id}/afterpay"
+    Stripe.apiKey = configuration.get[String]("stripe.appSecret")
+    val YOUR_DOMAIN = s"https://localhost:9443/orders/${id}/afterpay"
 
     val orderq = orders.filter(_.id === id)
     val orderr = db.run(orderq.result)
-    orderr.map { order =>
+    orderr.flatMap { order =>
       if (order.nonEmpty) {
-        var param: mutable.HashMap[String, Object] = mutable.HashMap()
-        param += ("name" -> "Somethgin1")
-
-        val product = Product.create(param.asJava)
-        val priceData = new PriceData.Builder().setProduct(product.getId)
-          .setCurrency("PLN")
-          .setUnitAmount(12333)
-          .setTaxBehavior(PriceData.TaxBehavior.INCLUSIVE)
-          .build();
+        val ioq = itemsOrders.filter(_.orderId === id)
         val params = SessionCreateParams.builder
           .setMode(SessionCreateParams.Mode.PAYMENT)
-          .setSuccessUrl(domain + "?success=true")
-          .setCancelUrl(domain + "?canceled=true")
-          .addLineItem(
-            SessionCreateParams.LineItem.builder.setQuantity(1L).setPriceData(priceData).build).build
-        val session = Session.create(params)
-        val newItem = order.head.copy(link = Some(session.getUrl), payid = Some(session.getId))
-        val q = orderq.update(newItem)
-        db.run(q)
-        Redirect(session.getUrl)
+          .setSuccessUrl(YOUR_DOMAIN + "?success=true")
+          .setCancelUrl(YOUR_DOMAIN + "?canceled=true");
+        db.run(ioq.result).flatMap {
+          itemsInOrder => {
+            Future.sequence(itemsInOrder.map {
+              singleItem => {
+                val itemQ = items.filter(_.id === singleItem.itemId)
+                db.run(itemQ.result).map(seq => seq.head)
+              }
+            })
+          }
+        }.map {
+          items => {
+            println(items)
+            items.map { item =>
+              val priceData = productToPriceData(item)
+              params.addLineItem(SessionCreateParams.LineItem.builder.setQuantity(1L).setPriceData(priceData).build)
+            }
+            params
+          }
+        }.flatMap { seq =>
+          val session = Session.create(params.build())
+          val newItem = order.head.copy(link = Some(session.getUrl), payid = Some(session.getId))
+          val q = orderq.update(newItem)
+          db.run(q)
+          Future(Ok(session.getUrl))
+        }
       } else
-        NotFound("Not found")
+        Future(NotFound("Not found"))
     }
+  }
+
+  def productToPriceData(item: ItemsRow): PriceData = {
+    var param: mutable.HashMap[String, Object] = mutable.HashMap()
+    param += ("name" -> item.name.get)
+    val product = Product.create(param.asJava)
+    new PriceData.Builder().setProduct(product.getId)
+      .setCurrency("PLN")
+      .setUnitAmount(item.price.get)
+      .setTaxBehavior(PriceData.TaxBehavior.INCLUSIVE)
+      .build();
   }
 
   def getAll(): Action[AnyContent] = Action.async {
     request => {
       val id = request.session.get("id").get.toInt
-      println(id)
       val res = db.run(orders.filter(_.userId === id).result)
       res.map { items =>
         Ok(Json.toJson(items))
@@ -114,7 +134,6 @@ class OrderController @Inject()(val controllerComponents: ControllerComponents)
   def add(): Action[AnyContent] = Action.async {
     request => {
       val id = request.session.get("id").get
-      println(id)
       val content = request.body
       val jsonObject = content.asJson
       val order: Option[List[Int]] =
@@ -133,23 +152,40 @@ class OrderController @Inject()(val controllerComponents: ControllerComponents)
         })
       }))
       itemsInCart.flatMap(iIC => {
-        val newOrder = new OrdersRow(
+        val newOrder = OrdersRow(
           id = 0,
           userId = Some(id.toInt),
           when = Some(new Date(Instant.now().toEpochMilli)),
-          paid = Some(price.get()))
+          total = Some(price.get()))
         val insertQ = (orders returning orders.map(_.id)) += newOrder
         val insertResult: Future[Int] = db.run(insertQ)
         insertResult.map { insertedId =>
           iIC.foreach(siic => {
-            val newItemOrder = new ItemsOrdersRow(0, Some(siic.id), Some(insertedId))
-            val insertIOQ = itemsOrders += newItemOrder
-            db.run(insertIOQ)
+            val newItemOrder = ItemsOrdersRow(0, Some(siic.id), Some(insertedId))
+            assignKeyToOrder(insertedId, siic.id)
+              .map(_ => {
+                val insertIOQ = itemsOrders += newItemOrder
+                db.run(insertIOQ)
+              })
           })
           Ok(Json.toJson(insertedId))
         }
       })
     }
+  }
+
+  def assignKeyToOrder(orderId: Int, itemId: Int): Future[Boolean] = {
+    val q = (for {
+      item <- {
+        val byItemId = keys.filter(_.itemId === itemId).filter(_.orderId.isEmpty).forUpdate;
+        byItemId.result
+      }
+      _ <- {
+        val newKey = item.head.copy(orderId = Some(orderId))
+        keys.filter(_.id === newKey.id).update(newKey)
+      }
+    } yield ()).transactionally
+    db.run(q).map(_ => true)
   }
 
 

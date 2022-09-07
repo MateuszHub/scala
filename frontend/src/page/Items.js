@@ -1,58 +1,63 @@
-import Item from "../component/Item";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import styled from 'styled-components';
 import { Button, Card, Container, Dropdown, Form } from 'react-bootstrap'
 import { useContext, useEffect, useState } from "react";
 import { CartContext } from "../context/CartContextProvider";
+import useAuth from "../state/useAuth";
+import { Link } from "react-router-dom";
+import axios from 'axios';
+import CONSTANTS from '../utils/Constants';
 function Items() {
 
-    const allItems = [
-        { name: "1Apple iphhone 12", price: 123, genre: "action", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "2Apple iphhone 11", price: 223, genre: "rpg", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "3Apple iphhone 13", price: 323, genre: "sport", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "4Apple iphhone 12", price: 123, genre: "action", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "5Apple iphhone 11", price: 223, genre: "rpg", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "6Apple iphhone 13", price: 323, genre: "sport", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "7Apple iphhone 12", price: 123, genre: "action", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "8Apple iphhone 11", price: 223, genre: "rpg", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "9Apple iphhone 13", price: 323, genre: "sport", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "Apple iphhone 12", price: 123, genre: "action", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "Apple iphhone 11", price: 223, genre: "rpg", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-        { name: "Apple iphhone 13", price: 323, genre: "sport", quantity: 2, img: "https://m.media-amazon.com/images/I/81xdOXAODpL.jpg" },
-    ]
+    const [allItems, setAllItems] = useState([])
 
-    const genres = ["action", "rpg", "sport"]
+    const filterTypes = ["active", "inactive"]
 
     const StyledCardImg = styled(Card.Img)`
         height: 15vw;
         object-fit: cover;
     `
-
-    
+    const [user] = useAuth();
     const cart = useContext(CartContext);
-    console.log(cart)
 
-    const [filters, setFilters] = useState(["action"]);
+    const [filters, setFilters] = useState(["active"]);
     const [items, setItems] = useState([]);
 
-    const setGenreFilter = (name, value) => {
+    const setFilter = (name, value) => {
         if (value)
-            setFilters([...filters, name])
+            setFilters([...filters.filter(e => e !== name), name])
         else
             setFilters([...filters.filter(e => e !== name)])
-        console.log(filters)
     }
-
+    
+    const loadItems = () => {
+        axios.get(`${CONSTANTS.BACKEND_HOST}/items`,  { withCredentials: true })
+            .then(function (response) {
+                setAllItems([...response.data]);  
+            }).catch(function (error) {
+                setAllItems([]);
+            });
+    }
+    
     useEffect(() => {
-        setItems(allItems.filter(e => filters.indexOf(e.genre) >= 0))
-    }, [filters])
+        loadItems()
+    }, [])
+
+    useEffect(() => {              
+        let tmpItems = [...allItems].filter(item => item.price > 0);
+        if(filters.indexOf("active") < 0)
+            tmpItems = tmpItems.filter(e => e.quantity === 0)
+        if(filters.indexOf("inactive") < 0)
+            tmpItems = tmpItems.filter(e => e.quantity > 0)
+        setItems([...tmpItems])
+    }, [filters, allItems])
 
     const sortByName = () => {
         setItems([...items].sort((a, b) => a.name.localeCompare(b.name)))
     }
     const sortByPrice = () => {
-        setItems([...items].sort((a, b) => a.price - b.price))
+        setItems([...items.sort((a, b) => a.price - b.price)])
     }
 
     return (
@@ -60,12 +65,13 @@ function Items() {
             <h2>Items</h2>
             <Row>
                 <Col>
-                    {genres.map((item, index) => (
+                    {filterTypes.map((item, index) => (
                         <Form.Check
-                            key={item}
+                            key={index}
                             type="switch"
                             label={item}
-                            onClick={(e) => { console.log(e.currentTarget.checked); setGenreFilter(item, e.target.checked) }}
+                            defaultChecked={filters.indexOf(item) >= 0}
+                            onClick={(e) => { setFilter(item, e.target.checked) }}
                         />))}
                 </Col>
                 <Col>
@@ -83,14 +89,15 @@ function Items() {
             </Row>
             <Row xs={2} md={3} className="g-4">
                 {items.map((item, index) => (
-                    <Col key={item.name}>
+                    <Col key={index}>
                         <Card>
                             <StyledCardImg src={item.img} />
                             <Card.Body>
                                 <Card.Title>{item.name}</Card.Title>
                                 <Card.Text>
-                                    {item.price}zł
+                                {(item.price / 100)}zł
                                 </Card.Text>
+                                {user?.isAdmin && <Link to={`/items/${item.id}/keys`}><Button variant="primary" className='mx-1'>Add keys</Button></Link>}
                                 <Button variant="primary" onClick={e => cart.addProductToCart(item)}>Add to cart</Button>
                             </Card.Body>
                         </Card>
